@@ -1,0 +1,87 @@
+@page "/login"
+@using Microsoft.AspNetCore.Components.Authorization
+@using SmartParking.BusinessObject.Shared.Models.KhoiDN.DTOs
+@using SmartParking.MAUIHybridWebApp.KhoiDN.Shared.Services
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthStateProvider
+
+<PageTitle>Đăng nhập hệ thống</PageTitle>
+
+<div class="container d-flex justify-content-center align-items-center" style="min-height: 80vh;">
+    <div class="card shadow-lg p-4" style="width: 400px; border-radius: 15px;">
+        <div class="text-center mb-4">
+            <h3 class="text-primary fw-bold">🔐 SMART PARKING</h3>
+            <p class="text-muted">Vui lòng đăng nhập để tiếp tục</p>
+        </div>
+
+        @if (!string.IsNullOrEmpty(ErrorMessage))
+        {
+            <div class="alert alert-danger py-2 text-center">@ErrorMessage</div>
+        }
+
+        <EditForm Model="loginModel" OnValidSubmit="HandleLogin">
+            <DataAnnotationsValidator />
+
+            <div class="mb-3">
+                <label class="form-label">Tài khoản</label>
+                <InputText @bind-Value="loginModel.Username" class="form-control" placeholder="Nhập tên đăng nhập..." />
+                <ValidationMessage For="() => loginModel.Username" class="text-danger small" />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Mật khẩu</label>
+                <InputText @bind-Value="loginModel.Password" type="password" class="form-control" placeholder="Nhập mật khẩu..." />
+                <ValidationMessage For="() => loginModel.Password" class="text-danger small" />
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100 py-2 mt-2 fw-bold" disabled="@IsLoading">
+                @(IsLoading ? "Đang xác thực..." : "Đăng nhập 🚀")
+            </button>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    private LoginRequestDto loginModel = new LoginRequestDto();
+    private string ErrorMessage = string.Empty;
+    private bool IsLoading = false;
+
+    private async Task HandleLogin()
+    {
+        IsLoading = true;
+        ErrorMessage = string.Empty;
+
+        try
+        {
+            // Gọi API Login qua Ocelot Gateway (Hãy cấu hình route /gateway/auth/login trong ocelot.json trỏ tới Service User của bạn nhé)
+            var response = await Http.PostAsJsonAsync("gateway/auth/login", loginModel);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<LoginResponseDto>();
+                if (result != null && !string.IsNullOrEmpty(result.AccessToken))
+                {
+                    // Ép trạng thái đăng nhập thành công và lưu Token
+                    var customProvider = (CustomAuthStateProvider)AuthStateProvider;
+                    customProvider.MarkUserAsAuthenticated(loginModel.Username, result.AccessToken);
+
+                    // Đăng nhập xong xuôi xuôi tiến thẳng vào trang chủ Home!
+                    Navigation.NavigateTo("/");
+                }
+            }
+            else
+            {
+                ErrorMessage = "Tài khoản hoặc mật khẩu không chính xác!";
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Lỗi kết nối hệ thống: {ex.Message}";
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+}

@@ -1,0 +1,17 @@
+<Solution>
+  <Project Path="SmartParking.AppHost.KhoiDN/SmartParking.AppHost.KhoiDN.csproj" Id="69e0658c-468d-4876-a904-c28f8d85f344" />
+  <Project Path="SmartParking.BusinessObject.Shared.Models.KhoiDN/SmartParking.BusinessObject.Shared.Models.KhoiDN.csproj" />
+  <Project Path="SmartParking.MAUIHybridWebApp.KhoiDN/SmartParking.MAUIHybridWebApp.KhoiDN.Shared/SmartParking.MAUIHybridWebApp.KhoiDN.Shared.csproj" />
+  <Project Path="SmartParking.MAUIHybridWebApp.KhoiDN/SmartParking.MAUIHybridWebApp.KhoiDN.Web/SmartParking.MAUIHybridWebApp.KhoiDN.Web.csproj" />
+  <Project Path="SmartParking.MAUIHybridWebApp.KhoiDN/SmartParking.MAUIHybridWebApp.KhoiDN/SmartParking.MAUIHybridWebApp.KhoiDN.csproj">
+    <Deploy Solution="Debug|*" />
+  </Project>
+  <Project Path="SmartParking.Notification.SignalRService.KhoiDN/SmartParking.Notification.SignalRService.KhoiDN.csproj" />
+  <Project Path="SmartParking.OcelotAPIGateway.KhoiDN/SmartParking.OcelotAPIGateway.KhoiDN.csproj" />
+  <Project Path="SmartParking.Transactions.Microservice.KhoiDN/SmartParking.Transactions.Microservice.KhoiDN.csproj" />
+  <Project Path="SmartParking.User.Microservice.KhoiDN/SmartParking.User.Microservice.KhoiDN.csproj" />
+  <Project Path="SmartParking_PaymentService.APIWebApp.KhoiDN/SmartParking.Invoices.Microservice.KhoiDN.csproj" />
+  <Project Path="SU26_PRN232_Payment.Entities.KhoiDN/SU26_PRN232_Payment.Entities.KhoiDN.csproj" />
+  <Project Path="SU26_PRN232_Payment.Repositories.KhoiDN/SU26_PRN232_Payment.Repositories.KhoiDN.csproj" />
+  <Project Path="SU26_PRN232_Payment.Services.KhoiDN/SU26_PRN232_Payment.Services.KhoiDN.csproj" />
+</Solution>

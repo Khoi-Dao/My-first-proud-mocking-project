@@ -1,0 +1,102 @@
+{
+  "Routes": [
+    // ==========================================================
+    // 1. ROUTES CHO MICROSERVICE 1: INVOICES (ĐỒNG BỘ 100% HTTPS PORT 7177)
+    // ==========================================================
+    {
+      "DownstreamPathTemplate": "/api/invoices",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "localhost",
+          "Port": 7177
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/InvoicesKhoiDn",
+      "UpstreamHttpMethod": [ "POST", "GET" ]
+    },
+    {
+      "DownstreamPathTemplate": "/api/invoices/{id}",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "localhost",
+          "Port": 7177
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/InvoicesKhoiDn/{id}",
+      "UpstreamHttpMethod": [ "GET", "PUT", "DELETE" ]
+    },
+    {
+      "DownstreamPathTemplate": "/api/invoices/search",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "localhost",
+          "Port": 7177
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/InvoicesKhoiDn/search",
+      "UpstreamHttpMethod": [ "GET" ]
+    },
+    {
+      "DownstreamPathTemplate": "/api/invoices/advancedsearch",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "localhost",
+          "Port": 7177
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/InvoicesKhoiDn/advancedsearch",
+      "UpstreamHttpMethod": [ "GET" ]
+    },
+
+    // ==========================================================
+    // 2. ROUTES CHO MICROSERVICE 2: TRANSACTIONS (PORT 5124)
+    // ==========================================================
+    {
+      "DownstreamPathTemplate": "/api/transactions",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "localhost",
+          "Port": 7142
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/TransactionsKhoiDn",
+      "UpstreamHttpMethod": [ "POST", "GET" ]
+    },
+    {
+      "DownstreamPathTemplate": "/api/transactions/{id}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "localhost",
+          "Port": 5124
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/TransactionsKhoiDn/{id}",
+      "UpstreamHttpMethod": [ "GET", "PUT", "DELETE" ]
+    },
+
+    // ==========================================================
+    // 3. ROUTES CHO MICROSERVICE 3: USER & AUTH (PORT 7215)
+    // ==========================================================
+    {
+      "DownstreamPathTemplate": "/api/auth/login",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "localhost",
+          "Port": 7215
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/auth/login",
+      "UpstreamHttpMethod": [ "POST" ]
+    }
+  ],
+  "GlobalConfiguration": {
+    "BaseUrl": "http://localhost:5000"
+  }
+}

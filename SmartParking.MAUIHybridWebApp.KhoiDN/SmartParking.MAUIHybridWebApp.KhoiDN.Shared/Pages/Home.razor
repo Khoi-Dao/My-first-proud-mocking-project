@@ -1,0 +1,147 @@
+@page "/"
+@attribute [Authorize]
+@using Microsoft.AspNetCore.SignalR.Client
+@using SmartParking.BusinessObject.Shared.Models.KhoiDN.DTOs
+@using SmartParking.MAUIHybridWebApp.KhoiDN.Shared.Services
+@using Microsoft.AspNetCore.Authorization
+@inject InvoiceApiService ApiService
+@inject IFormFactor FormFactor
+@implements IAsyncDisposable
+
+<PageTitle>Quản lý Hóa đơn Smart Parking</PageTitle>
+
+<div class="container mt-4">
+    <h2 class="text-primary mb-3">🚗 Hệ thống Quản lý Bãi đỗ xe thông minh</h2>
+
+    @if (!string.IsNullOrEmpty(RealtimeNotification))
+    {
+        <div class="alert alert-success alert-dismissible fade show shadow" role="alert">
+            <strong>🎉 Thông báo từ Hệ thống:</strong> @RealtimeNotification
+            <button type="button" class="btn-close" @onclick="() => RealtimeNotification = null"></button>
+        </div>
+    }
+
+    <div class="card mb-4 shadow-sm">
+        <div class="card-body">
+            <h5 class="card-title">Giả lập Xe xuất bãi (Test tạo hóa đơn)</h5>
+            <p class="card-text text-muted">Khi bấm nút, hệ thống sẽ gửi request qua Ocelot Gateway -> Microservice 1 tạo hóa đơn -> RabbitMQ -> Microservice 2 trừ tiền -> SignalR báo về đây!</p>
+            <button class="btn btn-primary" @onclick="CreateTestInvoice" disabled="@IsLoading">
+                @(IsLoading ? "Đang xử lý..." : "➕ Tạo hóa đơn test mới")
+            </button>
+            <button class="btn btn-outline-secondary ms-2" @onclick="LoadInvoices">🔄 Làm mới danh sách</button>
+        </div>
+    </div>
+
+    <h4 class="mb-3">📋 Danh sách Hóa đơn hiện có</h4>
+    @if (Invoices == null)
+    {
+        <p><em>Đang tải dữ liệu từ Gateway...</em></p>
+    }
+    else if (!Invoices.Any())
+    {
+        <p class="text-muted">Chưa có hóa đơn nào trong hệ thống.</p>
+    }
+    else
+    {
+        <table class="table table-hover table-bordered shadow-sm">
+            <thead class="table-dark">
+                <tr>
+                    <th>Mã Hóa Đơn</th>
+                    <th>ID Phiên Đỗ Xe</th>
+                    <th>Tổng Tiền</th>
+                    <th>Thời Gian Tạo</th>
+                    <th>Mô Tả</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var inv in Invoices)
+                {
+                    <tr>
+                        <td><strong>@inv.InvoiceCode</strong></td>
+                        <td><span class="badge bg-info text-dark">@inv.ParkingSessionId</span></td>
+                        <td><span class="text-danger fw-bold">@inv.TotalAmount.ToString("N0") VND</span></td>
+                        <td>@inv.CreatedAt.ToString("dd/MM/yyyy HH:mm:ss")</td>
+                        <td>@inv.Description</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</div>
+
+@code {
+    private List<InvoiceResponseDto>? Invoices;
+    private HubConnection? hubConnection;
+    private string? RealtimeNotification;
+    private bool IsLoading = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // 1. Tải danh sách hóa đơn từ Ocelot Gateway
+        await LoadInvoices();
+
+        // 2. Cấu hình kết nối WebSocket tới Trạm SignalR
+        string platform = FormFactor.GetPlatform();
+        string signalRUrl = platform.StartsWith("Android")
+            ? "http://10.0.2.2:5098/notificationHub"
+            : "http://localhost:5098/notificationHub";
+
+        hubConnection = new HubConnectionBuilder()
+            .WithUrl(signalRUrl)
+            .WithAutomaticReconnect()
+            .Build();
+
+        // Lắng nghe sự kiện "ReceiveTransactionNotification" từ Consumer của trạm SignalR bắn ra
+        hubConnection.On<object>("ReceiveTransactionNotification", async (notificationData) =>
+        {
+            RealtimeNotification = $"Một giao dịch mới vừa được xử lý thành công! (Chi tiết: {notificationData})";
+            await LoadInvoices();
+            await InvokeAsync(StateHasChanged); // Ép Blazor vẽ lại giao diện
+        });
+
+        try
+        {
+            await hubConnection.StartAsync();
+            Console.WriteLine("Đã kết nối SignalR thành công!");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Lỗi kết nối SignalR: {ex.Message}");
+        }
+    }
+
+    private async Task LoadInvoices()
+    {
+        Invoices = await ApiService.GetAllInvoicesAsync();
+    }
+
+    private async Task CreateTestInvoice()
+    {
+        IsLoading = true;
+        var newInvoice = new InvoiceCreateRequestDto
+        {
+            UserId = 1, // ID user test
+            ParkingSessionId = 0, // Sẽ được Custom Middleware của Gateway tự động sửa thành số ngẫu nhiên 1000-9999!
+            Description = "Hóa đơn đỗ xe ô tô (Test từ MAUI Hybrid App)"
+        };
+
+        // ⚠️ ĐÃ SỬA: Hứng kết quả số nguyên (int) thay vì bool
+        int result = await ApiService.CreateInvoiceAsync(newInvoice);
+
+        // Theo chuẩn Assignment 1: trả về 1 là thành công!
+        if (result == 1)
+        {
+            await LoadInvoices();
+        }
+
+        IsLoading = false;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (hubConnection is not null)
+        {
+            await hubConnection.DisposeAsync();
+        }
+    }
+}

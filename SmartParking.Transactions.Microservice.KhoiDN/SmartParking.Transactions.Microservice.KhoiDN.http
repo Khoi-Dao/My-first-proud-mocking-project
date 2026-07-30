@@ -1,0 +1,6 @@
+@SmartParking.Transactions.Microservice.KhoiDN_HostAddress = http://localhost:5124
+
+GET {{SmartParking.Transactions.Microservice.KhoiDN_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

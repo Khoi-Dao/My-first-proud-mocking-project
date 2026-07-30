@@ -1,0 +1,6 @@
+@SmartParking_PaymentService.APIWebApp.KhoiDN_HostAddress = http://localhost:5252
+
+GET {{SmartParking_PaymentService.APIWebApp.KhoiDN_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

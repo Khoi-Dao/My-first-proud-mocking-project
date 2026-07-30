@@ -1,0 +1,6 @@
+@SmartParking.Notification.SignalRService.KhoiDN_HostAddress = http://localhost:5098
+
+GET {{SmartParking.Notification.SignalRService.KhoiDN_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

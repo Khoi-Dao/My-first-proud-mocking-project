@@ -1,0 +1,330 @@
+﻿@page "/admin/invoices"
+@attribute [Authorize]
+@using Microsoft.AspNetCore.Authorization
+@using SmartParking.BusinessObject.Shared.Models.KhoiDN.DTOs
+@using SmartParking.MAUIHybridWebApp.KhoiDN.Shared.Services
+@inject InvoiceApiService ApiService
+
+<PageTitle>Quản trị Hóa đơn - Smart Parking</PageTitle>
+
+@if (IsPopupVisible)
+{
+    <div class="position-fixed top-0 end-0 p-3" style="z-index: 1050; margin-top: 60px;">
+        <div class="toast show shadow-lg @(IsSuccessAction ? "bg-success text-white" : "bg-danger text-white")" role="alert">
+            <div class="toast-header @(IsSuccessAction ? "bg-success text-white" : "bg-danger text-white") border-bottom-0">
+                <strong class="me-auto">🔔 Thông báo hệ thống</strong>
+                <button type="button" class="btn-close btn-close-white" @onclick="() => IsPopupVisible = false"></button>
+            </div>
+            <div class="toast-body">
+                <div class="fw-bold fs-6">@PopupMessage</div>
+                <div class="mt-1 badge @(IsSuccessAction ? "bg-light text-success" : "bg-light text-danger") font-monospace p-2 fs-6">
+                    Result: @PopupResultDisplay
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (IsEditModalOpen && SelectedInvoice != null)
+{
+    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5); z-index: 1040;" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content shadow">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">✏️ Cập nhật hóa đơn: @SelectedInvoice.InvoiceCode</h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="CloseEditModal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Trạng thái (Status):</label>
+                        <select @bind="editStatus" class="form-select">
+                            <option value="UNPAID">UNPAID (Chưa thanh toán)</option>
+                            <option value="PAID">PAID (Đã thanh toán)</option>
+                            <option value="CANCELLED">CANCELLED (Đã hủy)</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Mô tả (Description):</label>
+                        <textarea @bind="editDescription" class="form-control" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseEditModal">Hủy bỏ</button>
+                    <button type="button" class="btn btn-primary fw-bold" @onclick="SaveUpdate" disabled="@IsLoading">💾 Lưu Thay Đổi</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<div class="container-fluid mt-3">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3 class="text-primary fw-bold">⚙️ TRANG QUẢN TRỊ & TÌM KIẾM NÂNG CAO</h3>
+        <button class="btn btn-success fw-bold" @onclick="HandleCreateTest" disabled="@IsLoading">➕ Thêm Hóa Đơn (Test Create)</button>
+    </div>
+
+    <div class="card shadow-sm mb-4 bg-light">
+        <div class="card-body">
+            <h6 class="card-title fw-bold text-secondary">🔍 Tìm kiếm nâng cao (Advanced Search)</h6>
+            <div class="row g-2 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label small">ID Phiên đỗ xe:</label>
+                    <InputNumber @bind-Value="searchSessionId" class="form-control form-control-sm" placeholder="Nhập ID..." />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small">Trạng thái:</label>
+                    <InputText @bind-Value="searchStatus" class="form-control form-control-sm" placeholder="VD: PAID, UNPAID..." />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small">Mô tả (Description):</label>
+                    <InputText @bind-Value="searchDescription" class="form-control form-control-sm" placeholder="Từ khóa mô tả..." />
+                </div>
+                <div class="col-md-2 d-flex gap-1">
+                    <button class="btn btn-primary btn-sm w-100 fw-bold" @onclick="HandleAdvancedSearch" disabled="@IsLoading">Tìm kiếm</button>
+                    <button class="btn btn-outline-secondary btn-sm" @onclick="ResetSearch">Reset</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (Invoices == null)
+    {
+        <div class="text-center py-5"><div class="spinner-border text-primary"></div><p>Đang tải dữ liệu từ Gateway...</p></div>
+    }
+    else if (!Invoices.Any())
+    {
+        <div class="alert alert-warning">Không tìm thấy hóa đơn nào phù hợp với điều kiện!</div>
+    }
+    else
+    {
+        <table class="table table-hover table-bordered shadow-sm align-middle">
+            <thead class="table-dark text-center">
+                <tr>
+                    <th>ID</th>
+                    <th>Mã Hóa Đơn</th>
+                    <th>ID Phiên Đỗ</th>
+                    <th>Tổng Tiền</th>
+                    <th>Trạng Thái</th>
+                    <th>Mô Tả</th>
+                    <th style="width: 260px;">Thao Tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var inv in Invoices)
+                {
+                    <tr>
+                        <td class="text-center fw-bold">@inv.InvoiceKhoiDNId</td>
+                        <td class="fw-bold text-primary">@inv.InvoiceCode</td>
+                        <td class="text-center"><span class="badge bg-info text-dark">@inv.ParkingSessionId</span></td>
+                        <td class="text-end fw-bold text-danger">@inv.TotalAmount.ToString("N0") VND</td>
+                        <td class="text-center"><span class="badge bg-success">@inv.Status</span></td>
+                        <td>@inv.Description</td>
+                        <td class="text-center">
+                            @if (inv.Status == "UNPAID")
+                            {
+                                <button class="btn btn-sm btn-danger fw-bold me-1 shadow-sm"
+                                        @onclick="() => HandleCheckout(inv)"
+                                        disabled="@IsLoading"
+                                        title="Chốt giờ ra bãi & Thu tiền mặt">
+                                    🔴 Check-out Thu Tiền
+                                </button>
+                            }
+                            <button class="btn btn-sm btn-outline-primary me-1" @onclick="() => OpenEditModal(inv)">✏️ Sửa</button>
+                            <button class="btn btn-sm btn-outline-danger" @onclick="() => HandleDelete(inv.InvoiceKhoiDNId)">🗑️ Xóa</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</div>
+
+@code {
+    private List<InvoiceResponseDto>? Invoices;
+    private bool IsLoading = false;
+
+    // Biến cho Advanced Search
+    private int? searchSessionId;
+    private string? searchStatus;
+    private string? searchDescription;
+
+    // Biến điều khiển Pop-up Toast
+    private bool IsPopupVisible = false;
+    private string PopupMessage = string.Empty;
+    private string PopupResultDisplay = string.Empty;
+    private bool IsSuccessAction = false;
+
+    // Biến điều khiển Modal Sửa (Edit Modal)
+    private bool IsEditModalOpen = false;
+    private InvoiceResponseDto? SelectedInvoice;
+    private string editStatus = "";
+    private string editDescription = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAllData();
+    }
+
+    private async Task LoadAllData()
+    {
+        IsLoading = true;
+        Invoices = await ApiService.GetAllInvoicesAsync();
+        IsLoading = false;
+    }
+
+    // =========================================================================
+    // XỬ LÝ NGHIỆP VỤ CHECK-OUT & THU TIỀN MẶT (THUẦN EVENT-DRIVEN)
+    // =========================================================================
+    private async Task HandleCheckout(InvoiceResponseDto inv)
+    {
+        if (inv == null || inv.InvoiceKhoiDNId == 0)
+        {
+            await ShowPopup("Lỗi: ID hóa đơn không hợp lệ!", "ERROR", false);
+            return;
+        }
+
+        IsLoading = true;
+        StateHasChanged(); // Cập nhật UI hiển thị trạng thái đang xử lý
+
+        // Gọi sang Invoices Service để chốt trạng thái PAID (sẽ kích hoạt Event RabbitMQ)
+        bool isSuccess = await ApiService.ProcessCheckoutAsync(inv.InvoiceKhoiDNId);
+
+        IsLoading = false;
+
+        if (isSuccess)
+        {
+            await ShowPopup($"Check-out thành công hóa đơn {inv.InvoiceCode}! Đang chờ xử lý giao dịch ngầm...", "SUCCESS", true);
+            await LoadAllData(); // Làm mới danh sách để hóa đơn tự đổi trạng thái sang PAID (Màu xanh)
+        }
+        else
+        {
+            await ShowPopup("Check-out thất bại! Vui lòng kiểm tra lại kết nối Gateway hoặc Service.", "FAILED", false);
+        }
+    }
+
+    private async Task HandleAdvancedSearch()
+    {
+        IsLoading = true;
+
+        // 💡 KIỂM TRA: Nếu người dùng để trống toàn bộ 3 ô tìm kiếm
+        bool isAllEmpty = !searchSessionId.HasValue
+                          && string.IsNullOrWhiteSpace(searchStatus)
+                          && string.IsNullOrWhiteSpace(searchDescription);
+
+        if (isAllEmpty)
+        {
+            // -> Tự động gọi lại hàm lấy toàn bộ danh sách (Giống hệt bấm nút Reset)
+            Invoices = await ApiService.GetAllInvoicesAsync();
+        }
+        else
+        {
+            // Nếu có nhập ít nhất 1 ô thì mới gọi API tìm kiếm nâng cao
+            Invoices = await ApiService.AdvancedSearchAsync(searchSessionId, searchStatus, searchDescription);
+        }
+
+        IsLoading = false;
+    }
+
+    private async Task ResetSearch()
+    {
+        searchSessionId = null;
+        searchStatus = null;
+        searchDescription = null;
+        await LoadAllData();
+    }
+
+    // XỬ LÝ XÓA
+    private async Task HandleDelete(int id)
+    {
+        if (id == 0)
+        {
+            await ShowPopup("Lỗi: ID hóa đơn không hợp lệ (ID=0)!", "false", false);
+            return;
+        }
+
+        bool result = await ApiService.DeleteInvoiceAsync(id);
+        if (result)
+        {
+            await ShowPopup("Xóa hóa đơn thành công!", "true", true);
+            await LoadAllData();
+        }
+        else
+        {
+            await ShowPopup("Xóa hóa đơn thất bại! (Kiểm tra lại quyền hoặc ID)", "false", false);
+        }
+    }
+
+    // XỬ LÝ TẠO TEST
+    private async Task HandleCreateTest()
+    {
+        IsLoading = true;
+        var newInv = new InvoiceCreateRequestDto
+        {
+            UserId = 1,
+            ParkingSessionId = new Random().Next(1000, 9999),
+            Description = $"Hóa đơn test từ Trang Quản Trị ({DateTime.Now:HH:mm:ss})"
+        };
+
+        int result = await ApiService.CreateInvoiceAsync(newInv);
+        IsLoading = false;
+
+        if (result == 1)
+        {
+            await ShowPopup("Thêm hóa đơn mới thành công!", "1", true);
+            await LoadAllData();
+        }
+        else
+        {
+            await ShowPopup("Thêm hóa đơn thất bại!", "0", false);
+        }
+    }
+
+    // ĐIỀU KHIỂN MODAL SỬA
+    private void OpenEditModal(InvoiceResponseDto inv)
+    {
+        SelectedInvoice = inv;
+        editStatus = inv.Status;
+        editDescription = inv.Description;
+        IsEditModalOpen = true;
+    }
+
+    private void CloseEditModal()
+    {
+        IsEditModalOpen = false;
+        SelectedInvoice = null;
+    }
+
+    private async Task SaveUpdate()
+    {
+        if (SelectedInvoice == null || SelectedInvoice.InvoiceKhoiDNId == 0) return;
+
+        IsLoading = true;
+        int result = await ApiService.UpdateInvoiceAsync(SelectedInvoice.InvoiceKhoiDNId, editStatus, editDescription);
+        IsLoading = false;
+
+        if (result == 1)
+        {
+            CloseEditModal();
+            await ShowPopup("Cập nhật hóa đơn thành công!", "1", true);
+            await LoadAllData();
+        }
+        else
+        {
+            await ShowPopup("Cập nhật hóa đơn thất bại!", "0", false);
+        }
+    }
+
+    // HÀM ĐIỀU KHIỂN POP-UP TOAST
+    private async Task ShowPopup(string message, string resultValueDisplay, bool isSuccess)
+    {
+        PopupMessage = message;
+        PopupResultDisplay = resultValueDisplay;
+        IsSuccessAction = isSuccess;
+        IsPopupVisible = true;
+
+        StateHasChanged();
+        await Task.Delay(3000);
+        IsPopupVisible = false;
+        StateHasChanged();
+    }
+}

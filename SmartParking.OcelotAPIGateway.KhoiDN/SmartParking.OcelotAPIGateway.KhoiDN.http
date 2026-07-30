@@ -1,0 +1,6 @@
+@SmartParking.OcelotAPIGateway.KhoiDN_HostAddress = http://localhost:5208
+
+GET {{SmartParking.OcelotAPIGateway.KhoiDN_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
